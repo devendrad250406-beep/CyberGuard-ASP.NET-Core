@@ -1,0 +1,68 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Security Operations Center";
+    var section = (string?)ViewBag.Section ?? "overview";
+}
+<div class="app-shell">
+    <aside class="sidebar">
+        <a class="brand" asp-controller="Home" asp-action="Index"><span class="brand-icon">⬡</span><span>Cyber<span class="cyan">Guard</span><small>SECURITY OPERATIONS</small></span></a>
+        <div class="nav-label">WORKSPACE</div>
+        <nav>
+            <a class="nav-link @(section=="overview"?"active":"")" href="/?section=overview">▦ <span>Overview</span></a>
+            <a class="nav-link @(section=="alerts"?"active":"")" href="/?section=alerts">◉ <span>Threat Monitoring</span><b>@Model.Alerts.Count</b></a>
+            <a class="nav-link @(section=="incidents"?"active":"")" href="/?section=incidents">▣ <span>Incident Management</span></a>
+            <a class="nav-link @(section=="network"?"active":"")" href="/?section=network">⌁ <span>Network Activity</span></a>
+            <a class="nav-link @(section=="logs"?"active":"")" href="/?section=logs">☷ <span>Security Logs</span></a>
+            <a class="nav-link @(section=="analytics"?"active":"")" href="/?section=analytics">▥ <span>Analytics & Reports</span></a>
+        </nav>
+        <div class="sidebar-bottom"><span class="pulse"></span> Demo monitoring active <small>CyberGuard Web v1.0</small></div>
+    </aside>
+    <main class="main">
+        <header class="topbar"><div><span class="eyebrow">CYBERSECURITY / OPERATIONS</span><h1>@(section switch { "alerts"=>"Threat Monitoring", "incidents"=>"Incident Management", "network"=>"Network Activity", "logs"=>"Security Logs", "analytics"=>"Analytics & Reports", _=>"Security Overview" })</h1></div><div class="top-actions"><span class="system-status"><i></i> All systems operational</span><span class="avatar">CG</span></div></header>
+        <div class="content">
+        @if (section == "overview" || section == "analytics")
+        {
+            <div class="welcome-row"><div><h2>@(section=="analytics"?"Security Analytics":"Security at a glance")</h2><p>Monitor threats, investigate incidents, and review your security posture.</p></div><a class="btn primary" asp-action="ExportCsv">↓ Export CSV Report</a></div>
+            <div class="stats-grid">
+                <div class="stat-card"><span class="stat-icon blue">◉</span><label>Total Alerts</label><strong>@Model.Alerts.Count</strong><small>All detected threats</small></div>
+                <div class="stat-card"><span class="stat-icon red">⚠</span><label>Critical Threats</label><strong>@Model.CriticalAlerts</strong><small>Require priority review</small></div>
+                <div class="stat-card"><span class="stat-icon orange">▣</span><label>Open Incidents</label><strong>@Model.OpenIncidents</strong><small>Open or investigating</small></div>
+                <div class="stat-card"><span class="stat-icon green">✓</span><label>Suspicious Connections</label><strong>@Model.SuspiciousConnections</strong><small>Flagged network records</small></div>
+            </div>
+            <div class="two-col">
+                <section class="panel"><div class="panel-head"><div><h3>Recent Security Alerts</h3><p>Latest detected activity</p></div><a href="/?section=alerts" class="text-link">View all →</a></div>
+                    @foreach (var a in Model.Alerts.Take(5)) { <div class="list-row"><span class="severity-dot @a.Severity.ToLower()"></span><div class="row-main"><b>@a.ThreatType</b><small>@a.Id · @a.SourceIp</small></div><span class="pill @a.Status.ToLower()">@a.Status</span></div> }
+                </section>
+                <section class="panel"><div class="panel-head"><div><h3>Recent Activity</h3><p>Centralized activity timeline</p></div><a href="/?section=logs" class="text-link">View logs →</a></div>
+                    @foreach (var a in Model.Activities.Take(5)) { <div class="activity-row"><span class="activity-symbol">↗</span><div class="row-main"><b>@a.ActivityType</b><small>@a.Description</small><small>@a.Timestamp.ToLocalTime().ToString("dd MMM yyyy, HH:mm") · @a.RelatedId</small></div></div> }
+                </section>
+            </div>
+            <section class="panel"><div class="panel-head"><div><h3>Cross-Module Data Synchronization</h3><p>One shared data service keeps all modules connected.</p></div><span class="pill active">CONNECTED</span></div><div class="sync-flow"><div class="sync-node">Threat Monitoring</div><span>↔</span><div class="sync-hub">Shared<br/>Data Service</div><span>↔</span><div class="sync-node">Incident Management</div><span>↔</span><div class="sync-node">Logs & Analytics</div></div></section>
+        }
+        @if (section == "alerts")
+        {
+            <div class="section-heading"><div><h2>Threat Intelligence Feed</h2><p>Review and update detected security events.</p></div><form asp-action="GenerateTestAlert" method="post">@Html.AntiForgeryToken()<button class="btn primary">＋ Generate Test Alert</button></form></div>
+            <section class="panel"><div class="panel-head"><h3>Create New Alert</h3></div><form asp-action="CreateAlert" method="post" class="form-grid">@Html.AntiForgeryToken()<label>Threat type<input name="threatType" required placeholder="e.g. Suspicious Login"/></label><label>Source IP<input name="sourceIp" required placeholder="192.168.1.10"/></label><label>Severity<select name="severity"><option>Low</option><option selected>Medium</option><option>High</option><option>Critical</option></select></label><label>Description<input name="description" placeholder="Brief details"/></label><button class="btn primary">Add Alert</button></form></section>
+            <section class="panel"><div class="panel-head"><h3>All Security Alerts</h3><span class="muted">@Model.Alerts.Count records</span></div><div class="table-wrap"><table><thead><tr><th>Alert ID</th><th>Threat</th><th>Source IP</th><th>Severity</th><th>Status</th><th>Update</th></tr></thead><tbody>@foreach(var a in Model.Alerts){<tr><td class="mono">@a.Id</td><td>@a.ThreatType</td><td class="mono">@a.SourceIp</td><td><span class="pill @a.Severity.ToLower()">@a.Severity</span></td><td><span class="pill @a.Status.ToLower()">@a.Status</span></td><td><form asp-action="UpdateAlert" method="post" class="inline-form">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@a.Id"/><select name="status"><option selected="@(a.Status=="Open")">Open</option><option selected="@(a.Status=="Investigating")">Investigating</option><option selected="@(a.Status=="Resolved")">Resolved</option></select><button class="btn small">Save</button></form></td></tr>}</tbody></table></div></section>
+        }
+        @if (section == "incidents")
+        {
+            <div class="section-heading"><div><h2>Incident Response Center</h2><p>Track investigations, ownership, and resolution progress.</p></div></div>
+            <section class="panel"><div class="panel-head"><h3>Create Incident</h3></div><form asp-action="CreateIncident" method="post" class="form-grid">@Html.AntiForgeryToken()<label>Incident title<input name="title" required placeholder="Incident summary"/></label><label>Related alert ID<input name="relatedAlertId" placeholder="ALT-1001"/></label><label>Priority<select name="priority"><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select></label><label>Assigned to<input name="assignedTo" placeholder="Security Analyst"/></label><label class="wide">Investigation notes<input name="notes" placeholder="Initial observations"/></label><button class="btn primary">＋ Create Incident</button></form></section>
+            <section class="panel"><div class="panel-head"><h3>Incident Register</h3><span class="muted">@Model.Incidents.Count records</span></div><div class="table-wrap"><table><thead><tr><th>Incident</th><th>Title / Related Alert</th><th>Priority</th><th>Owner</th><th>Status & Notes</th><th>Update</th></tr></thead><tbody>@foreach(var i in Model.Incidents){<tr><td class="mono">@i.Id</td><td><b>@i.Title</b><small class="table-sub">@i.RelatedAlertId</small></td><td><span class="pill @i.Priority.ToLower()">@i.Priority</span></td><td>@i.AssignedTo</td><td>@i.Status<small class="table-sub">@i.Notes</small></td><td><form asp-action="UpdateIncident" method="post" class="stack-form">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@i.Id"/><select name="status"><option>Open</option><option>Investigating</option><option>Resolved</option></select><input name="notes" placeholder="Update notes"/><button class="btn small">Update</button></form></td></tr>}</tbody></table></div></section>
+        }
+        @if (section == "network")
+        {
+            <div class="section-heading"><div><h2>Network Connection Monitor</h2><p>Demonstration network telemetry — simulated records, not live packet capture.</p></div></div>
+            <section class="panel"><div class="panel-head"><h3>Add Connection Record</h3></div><form asp-action="CreateConnection" method="post" class="form-grid">@Html.AntiForgeryToken()<label>Source IP<input name="sourceIp" required placeholder="192.168.1.12"/></label><label>Destination IP<input name="destinationIp" required placeholder="10.0.0.5"/></label><label>Port<input name="port" type="number" min="1" max="65535" value="443"/></label><label>Protocol<select name="protocol"><option>TCP</option><option>UDP</option><option>HTTP</option><option>HTTPS</option></select></label><button class="btn primary">＋ Add Connection</button></form></section>
+            <section class="panel"><div class="panel-head"><h3>Network Activity</h3><span class="muted">@Model.Connections.Count connections</span></div><div class="table-wrap"><table><thead><tr><th>Connection ID</th><th>Source</th><th>Destination</th><th>Port</th><th>Protocol</th><th>Status</th><th>Risk</th></tr></thead><tbody>@foreach(var n in Model.Connections){<tr><td class="mono">@n.Id</td><td class="mono">@n.SourceIp</td><td class="mono">@n.DestinationIp</td><td>@n.Port</td><td>@n.Protocol</td><td>@n.Status</td><td>@if(n.IsSuspicious){<span class="pill critical">Suspicious</span>}else{<form asp-action="MarkSuspicious" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@n.Id"/><button class="btn small warning">Flag</button></form>}</td></tr>}</tbody></table></div></section>
+        }
+        @if (section == "logs")
+        {
+            <div class="section-heading"><div><h2>Security Audit Trail</h2><p>Centralized record of activity across CyberGuard modules.</p></div><a class="btn primary" asp-action="ExportCsv">↓ Export Logs</a></div>
+            <section class="panel"><div class="panel-head"><h3>Activity Timeline</h3><span class="muted">@Model.Activities.Count events</span></div><div class="table-wrap"><table><thead><tr><th>Timestamp</th><th>Activity</th><th>Description</th><th>Related ID</th></tr></thead><tbody>@foreach(var a in Model.Activities){<tr><td>@a.Timestamp.ToLocalTime().ToString("dd MMM yyyy HH:mm:ss")</td><td><b>@a.ActivityType</b></td><td>@a.Description</td><td class="mono">@a.RelatedId</td></tr>}</tbody></table></div></section>
+        }
+        <footer>CYBERGUARD <span>•</span> ASP.NET CORE MVC DEMONSTRATION <span>•</span> SIMULATED SECURITY DATA</footer>
+        </div>
+    </main>
+</div>
